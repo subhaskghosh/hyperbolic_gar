@@ -93,9 +93,9 @@ melted_df['Aggregation Method'] = (
 
 # Plot accuracy curves for each dataset
 datasets = ["spambase", "mnist", "fashion_mnist", "cifar10"]
-for dataset in datasets:
-    plot_accuracy(melted_df, dataset)
-    plot_accuracy(melted_df, dataset, plot_type='accuracy_var', x_axis=r'$ \sigma^2 $', y_axis='accuracy')
+# for dataset in datasets:
+#     plot_accuracy(melted_df, dataset)
+#     plot_accuracy(melted_df, dataset, plot_type='accuracy_var', x_axis=r'$ \sigma^2 $', y_axis='accuracy')
 
 # Plot loss curves:
 for dataset in datasets:
@@ -104,9 +104,19 @@ for dataset in datasets:
         for noise_var in [1.0, 10.0, 100.0, 200.0]:
             for samples_per_node in [16, 32, 64, 128]:
                 loss_file = f"loss_curves_1/{dataset}_frac_{byz_frac}_noise_{noise_var}_attack_add_noise_samples_{samples_per_node}.csv"
+                loss_file_hk = f"loss_curves_hk/{dataset}_frac_{byz_frac}_noise_{noise_var}_attack_add_noise_samples_{samples_per_node}.csv"
                 if os.path.exists(loss_file):
                     loss_df = pd.read_csv(loss_file)
                     loss_df = loss_df.rename(columns={'epoch': 'Epoch','loss': 'Training Loss'})
+                    if os.path.exists(loss_file_hk):
+                        loss_hk_df = pd.read_csv(loss_file_hk)
+                        loss_hk_df = loss_hk_df.rename(
+                            columns={'epoch': 'Epoch', 'hyperbolic_krum_loss' : 'hk_loss'})
+                        
+                        loss_df = loss_df.merge(loss_hk_df, on=['Epoch'], how='outer')
+                        
+
+
                     loss_melted_df = loss_df.melt(
                         id_vars=['Epoch'],
                         value_vars=[col for col in loss_df.columns if 'loss' in col],
@@ -116,7 +126,7 @@ for dataset in datasets:
                     loss_melted_df['Aggregation Method'] = (
                         loss_melted_df['loss_type'].str.split('_').str[0]
                         .replace({'noisy': 'mean', 'noiseless': 'mean without noise',
-                                  'hyperbolic': 'hyperbolic median', 'median': 'co-ordinate wise median'})
+                                  'hyperbolic': 'hyperbolic median', 'median': 'co-ordinate wise median', 'hk' : 'hyperbolic krum'})
                     )
                     loss_melted_df[r'$ \sigma^2 $'] = noise_var
                     loss_melted_df[r'$ \beta $'] = byz_frac
