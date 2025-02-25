@@ -71,10 +71,18 @@ def plot(dataframe, dataset, plot_type='loss', x_axis='Epoch', y_axis='Training 
 
 # Read and preprocess results
 results_df = pd.read_csv("results_1.csv")
+results_hk_df = pd.read_csv("results_hk.csv")
+results_hk_df = results_hk_df.rename(columns={'hyperbolic_krum_train_accuracy': 'hk_train_accuracy','hyperbolic_krum_test_accuracy': 'hk_test_accuracy'})
 # Remove rows corresponding to ipm_attack
 results_df = results_df[results_df['attack_mode'] != 'ipm_attack']
+results_hk_df = results_hk_df[results_hk_df['attack_mode'] != 'ipm_attack']
+
+results_hk_df_selected = results_hk_df[['dataset', 'attack_mode', 'hk_train_accuracy', 'hk_test_accuracy']]
+# Merge on common columns, handling missing values
+merged_results_df = results_df.merge(results_hk_df_selected, on=['dataset', 'attack_mode'], how='outer')
+
 # Rename columns for consistency
-results_df = results_df.rename(columns={'samples_per_node': r'$ m $',
+results_df = merged_results_df.rename(columns={'samples_per_node': r'$ m $',
                                         'byzantine_fraction': r'$ \beta $',
                                         'noise_variance': r'$ \sigma^2 $'})
 # Melt the dataframe to create a long-form dataframe for plotting accuracy curves
@@ -88,14 +96,14 @@ melted_df = results_df.melt(
 melted_df['Aggregation Method'] = (
     melted_df['accuracy_type'].str.split('_').str[0]
     .replace({'noisy': 'mean', 'noiseless': 'mean without noise',
-              'hyperbolic': 'hyperbolic median', 'median': 'co-ordinate wise median'})
+              'hyperbolic': 'hyperbolic median', 'median': 'co-ordinate wise median', 'hk':'hyperbolic krum'})
 )
 
 # Plot accuracy curves for each dataset
 datasets = ["spambase", "mnist", "fashion_mnist", "cifar10"]
 for dataset in datasets:
-     plot_accuracy(melted_df, dataset)
-     plot_accuracy(melted_df, dataset, plot_type='accuracy_var', x_axis=r'$ \sigma^2 $', y_axis='accuracy')
+    plot_accuracy(melted_df, dataset)
+    plot_accuracy(melted_df, dataset, plot_type='accuracy_var', x_axis=r'$ \sigma^2 $', y_axis='accuracy')
 
 # Plot loss curves:
 for dataset in datasets:
@@ -112,9 +120,9 @@ for dataset in datasets:
                         loss_hk_df = pd.read_csv(loss_file_hk)
                         loss_hk_df = loss_hk_df.rename(
                             columns={'epoch': 'Epoch', 'hyperbolic_krum_loss' : 'hk_loss'})
-                        
+                        # Merge on Epoch using an outer join to handle missing values
                         loss_df = loss_df.merge(loss_hk_df, on=['Epoch'], how='outer')
-                        
+                        # If original loss_df had an aggregation method, fill it for consistency
 
 
                     loss_melted_df = loss_df.melt(
