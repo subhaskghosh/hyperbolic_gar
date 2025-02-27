@@ -33,10 +33,11 @@ def plot_accuracy(dataframe, dataset, plot_type='accuracy', x_axis=r'$ m $', y_a
         palette=sns.color_palette(["#38BDF2", "#F29544", "#44803F", "#323673", "#F2055C", "#0583F2"])
     )
     g.map(sns.lineplot, x_axis, y_axis)
-    g.set_axis_labels(x_axis, y_axis)
+    g.set_axis_labels(x_axis, y_axis, size=18)
     sns.set_theme(rc={'figure.figsize': (12, 12)})
-    g.add_legend(adjust_subtitles=True)
     g.set_titles(size=20)
+    g.add_legend(adjust_subtitles=True)
+
 
     os.makedirs("plots_pdf", exist_ok=True)
     plt.savefig(f"plots_pdf/{plot_type}_plot_{dataset}.pdf", dpi=dpi)
