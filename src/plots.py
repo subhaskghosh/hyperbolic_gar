@@ -89,7 +89,7 @@ results_df = merged_results_df.rename(columns={'samples_per_node': r'$ m $',
 # Melt the dataframe to create a long-form dataframe for plotting accuracy curves
 melted_df = results_df.melt(
     id_vars=['dataset', r'$ \beta $', r'$ \sigma^2 $', 'attack_mode', r'$ m $'],
-    value_vars=[col for col in results_df.columns if 'accuracy' in col],
+    value_vars=[col for col in results_df.columns if 'test_accuracy' in col],
     var_name='accuracy_type',
     value_name='accuracy'
 )
