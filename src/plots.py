@@ -101,7 +101,7 @@ melted_df['Aggregation Method'] = (
 )
 
 # Plot accuracy curves for each dataset
-datasets = ["spambase", "mnist", "fashion_mnist", "cifar10"]
+datasets = ["spambase", "mnist", "fashion_mnist"]
 for dataset in datasets:
     plot_accuracy(melted_df, dataset)
     plot_accuracy(melted_df, dataset, plot_type='accuracy_var', x_axis=r'$ \sigma^2 $', y_axis='accuracy')

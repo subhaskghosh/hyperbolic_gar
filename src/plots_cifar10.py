@@ -16,6 +16,32 @@ plt.rcParams["ytick.direction"] = "in"
 plt.rcParams["font.size"] = 11.0
 plt.rcParams["figure.figsize"] = (8, 6)
 
+def plot_accuracy(dataframe, dataset, plot_type='accuracy', x_axis=r'$ m $', y_axis='accuracy'):
+    """
+    Plots accuracy curves using seaborn's FacetGrid.
+    """
+    # Reset index to avoid duplicate index errors
+    dataframe = dataframe.reset_index(drop=True)
+    sns.set_style("white")
+    g = sns.FacetGrid(
+        dataframe[dataframe['dataset'] == dataset],
+        col=r'$ \beta $',
+        hue="Aggregation Method",
+        legend_out=True,
+        col_wrap=3, height=3.5,
+        palette=sns.color_palette(["#38BDF2", "#F29544", "#44803F", "#323673", "#F2055C", "#0583F2"])
+    )
+    g.map(sns.lineplot, x_axis, y_axis)
+    g.set_axis_labels(x_axis, y_axis, size=18)
+    sns.set_theme(rc={'figure.figsize': (12, 9)})
+    g.set_titles(size=20)
+    g.add_legend(adjust_subtitles=True)
+
+
+    os.makedirs("src/plots_pdf", exist_ok=True)
+    plt.savefig(f"src/plots_pdf/{plot_type}_plot_{dataset}.pdf", dpi=dpi)
+    plt.close()
+
 def plot(dataframe, dataset, plot_type='loss', x_axis='Epoch', y_axis='Training Loss', row_param=r'$ \sigma^2 $'):
     """
     Plots loss curves using seaborn's FacetGrid.
@@ -37,12 +63,46 @@ def plot(dataframe, dataset, plot_type='loss', x_axis='Epoch', y_axis='Training 
     g.add_legend(adjust_subtitles=True)
     g.set_titles(size=20)
 
-    os.makedirs("plots_pdf", exist_ok=True)
+    os.makedirs("src/plots_pdf", exist_ok=True)
     plt.savefig(f"src/plots_pdf/{plot_type}_plot_{dataset}.pdf", dpi=dpi)
     plt.close()
 
+
 # Plot accuracy curves for each dataset
 datasets = ["cifar10"]
+# Read and preprocess results
+results_df = pd.read_csv("src/results_1.csv")
+results_hk_df = pd.read_csv("src/results_hk.csv")
+results_hk_df = results_hk_df.rename(columns={'hyperbolic_krum_train_accuracy': 'hk_train_accuracy','hyperbolic_krum_test_accuracy': 'hk_test_accuracy'})
+# Remove rows corresponding to ipm_attack
+results_df = results_df[results_df['attack_mode'] != 'ipm_attack']
+results_hk_df = results_hk_df[results_hk_df['attack_mode'] != 'ipm_attack']
+
+results_hk_df_selected = results_hk_df[['dataset', 'attack_mode', 'hk_train_accuracy', 'hk_test_accuracy']]
+# Merge on common columns, handling missing values
+merged_results_df = results_df.merge(results_hk_df_selected, on=['dataset', 'attack_mode'], how='outer')
+
+# Rename columns for consistency
+results_df = merged_results_df.rename(columns={'samples_per_node': r'$ m $',
+                                        'byzantine_fraction': r'$ \beta $',
+                                        'noise_variance': r'$ \sigma^2 $'})
+# Melt the dataframe to create a long-form dataframe for plotting accuracy curves
+melted_df = results_df.melt(
+    id_vars=['dataset', r'$ \beta $', r'$ \sigma^2 $', 'attack_mode', r'$ m $'],
+    value_vars=[col for col in results_df.columns if 'test_accuracy' in col],
+    var_name='accuracy_type',
+    value_name='accuracy'
+)
+# Extract aggregation method from the accuracy_type column and rename for clarity.
+melted_df['Aggregation Method'] = (
+    melted_df['accuracy_type'].str.split('_').str[0]
+    .replace({'noisy': 'mean', 'noiseless': 'mean without noise',
+              'hyperbolic': 'hyperbolic median', 'median': 'co-ordinate wise median', 'hk':'hyperbolic krum'})
+)
+
+for dataset in datasets:
+    plot_accuracy(melted_df, dataset)
+    plot_accuracy(melted_df, dataset, plot_type='accuracy_var', x_axis=r'$ \sigma^2 $', y_axis='accuracy')
 
 # Plot loss curves:
 for dataset in datasets:
@@ -81,7 +141,7 @@ for dataset in datasets:
                     loss_melted_df['dataset'] = dataset
                     merged_main_loss_df = pd.concat([merged_main_loss_df, loss_melted_df], ignore_index=True)
     merged_main_loss_df = merged_main_loss_df.reset_index(drop=True)
-    methods = ['mean']
-    merged_main_loss_df = merged_main_loss_df.loc[~merged_main_loss_df['Aggregation Method'].isin(methods)]
+    #methods = ['mean']
+    #merged_main_loss_df = merged_main_loss_df.loc[~merged_main_loss_df['Aggregation Method'].isin(methods)]
     plot(merged_main_loss_df, dataset)
     plot(merged_main_loss_df, dataset, plot_type='loss_sample', x_axis='Epoch', y_axis='Training Loss', row_param=r'$ m $')
