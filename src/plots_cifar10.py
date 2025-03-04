@@ -141,7 +141,10 @@ for dataset in datasets:
                     loss_melted_df['dataset'] = dataset
                     merged_main_loss_df = pd.concat([merged_main_loss_df, loss_melted_df], ignore_index=True)
     merged_main_loss_df = merged_main_loss_df.reset_index(drop=True)
-    #methods = ['mean']
-    #merged_main_loss_df = merged_main_loss_df.loc[~merged_main_loss_df['Aggregation Method'].isin(methods)]
+    methods = ['mean']
+    merged_main_loss_df_without = merged_main_loss_df.loc[~merged_main_loss_df['Aggregation Method'].isin(methods)]
     plot(merged_main_loss_df, dataset)
     plot(merged_main_loss_df, dataset, plot_type='loss_sample', x_axis='Epoch', y_axis='Training Loss', row_param=r'$ m $')
+    plot(merged_main_loss_df_without, dataset, plot_type='loss_wo')
+    plot(merged_main_loss_df_without, dataset, plot_type='loss_sample_wo', x_axis='Epoch', y_axis='Training Loss',
+         row_param=r'$ m $')
