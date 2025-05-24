@@ -1,27 +1,19 @@
 import os
 import csv
-import time
 import itertools
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
 import torch
 import torch.nn.functional as F
 
 from torch_geometric_temporal.dataset import METRLADatasetLoader
 from torch_geometric_temporal.signal import temporal_signal_split
 from torch_geometric_temporal.nn.recurrent import A3TGCN2
-from matplotlib import rc
-
-# Set plot style
-plt.style.use('seaborn-v0_8-whitegrid')
-rc('text', usetex=True)
-pd.plotting.register_matplotlib_converters()
-plt.style.use("seaborn-v0_8-ticks")
 
 # Set device and batch_size for DataLoaders
-DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+DEVICE = torch.device("mps")
+x = torch.ones(1, device=DEVICE)
+print (x)
 batch_size = 32
 shuffle = True
 
@@ -138,6 +130,28 @@ def hyperbolic_geometric_median(gradients, scaling_factor=2.0, max_iter=100, tol
     aggregated = map_to_euclidean(g_med_h, scaling_factor)
     return aggregated
 
+def euclidean_geometric_median_standalone(gradients_flat, max_iter=100, tol=1e-5, epsilon_egm=1e-9):
+    num_nodes, d_flat = gradients_flat.shape
+    if num_nodes == 0: return np.zeros(d_flat)
+    g_med_e = np.mean(gradients_flat, axis=0)
+    for _ in range(max_iter):
+        distances = np.linalg.norm(gradients_flat - g_med_e, axis=1)
+        at_median_indices = np.where(distances < epsilon_egm)[0]
+        if len(at_median_indices) > 0:
+            is_one_of_points = False
+            for i_idx in at_median_indices:
+                if np.allclose(g_med_e, gradients_flat[i_idx], atol=tol):
+                    g_med_e = gradients_flat[i_idx]
+                    is_one_of_points = True
+                    break
+            if is_one_of_points: break
+        weights = 1.0 / (distances + epsilon_egm)
+        sum_weights = np.sum(weights)
+        if sum_weights < epsilon_egm: break
+        new_median = np.sum(weights[:, np.newaxis] * gradients_flat, axis=0) / sum_weights
+        if np.linalg.norm(new_median - g_med_e) < tol: break
+        g_med_e = new_median
+    return g_med_e
 
 def robust_aggregate_vector(gradients, aggregation_type="average", beta=0):
     """
@@ -159,6 +173,8 @@ def robust_aggregate_vector(gradients, aggregation_type="average", beta=0):
         agg_flat = np.median(normalized_gradients, axis=0) * median_norm
     elif aggregation_type == "krum":
         agg_flat = krum_aggregate(normalized_gradients, beta) * median_norm
+    elif aggregation_type == "euclidean_median":
+        agg_flat = euclidean_geometric_median_standalone(normalized_gradients) * median_norm
     elif aggregation_type == "hyperbolic":
         agg_normalized = hyperbolic_geometric_median(normalized_gradients, scaling_factor=2.0)
         agg_flat = agg_normalized * median_norm
@@ -269,11 +285,11 @@ def run_experiments():
     # Parameter grid
     byzantine_fractions = [0.2, 0.3]
     noise_variances = [100.0, 200.0]
-    aggregation_methods = ['hyperbolic', 'krum', 'average', 'median']
+    aggregation_methods = ['euclidean_median']
     sample_per_node_options = [4]  # fixed (batch_size for temporal data is fixed)
     num_nodes = 8  # simulated nodes
 
-    results_file = "results_temporal.csv"
+    results_file = "results_temporal_sota.csv"
     if not os.path.exists(results_file):
         with open(results_file, "w", newline="") as f:
             writer = csv.writer(f)
@@ -355,19 +371,6 @@ def run_experiments():
                                      train_loss,
                                      train_metrics[0], train_metrics[1], train_metrics[2], train_metrics[3],
                                      test_metrics[0], test_metrics[1], test_metrics[2], test_metrics[3]])
-            # Plot training loss curve
-            os.makedirs("sgd_plots_temporal", exist_ok=True)
-            plt.figure(figsize=(10, 6))
-            plt.plot(range(1, num_epochs + 1), train_loss_list, label="Train Loss")
-            plt.xlabel("Epoch")
-            plt.ylabel("Loss (MSE)")
-            plt.title(f"Temporal GNN Distributed SGD\nByz Fraction: {byz_frac}, Noise: {noise_var}, "
-                      f"Agg: {agg_method}, Baseline: {baseline}")
-            plt.legend()
-            plot_file = f"sgd_plots_temporal/byz_{byz_frac}_noise_{noise_var}_agg_{agg_method}_baseline_{baseline}.pdf"
-            plt.savefig(plot_file, dpi=300, bbox_inches="tight")
-            plt.close()
-            print(f"Saved results and plot for config: {config_tuple}")
 
 
 if __name__ == "__main__":
