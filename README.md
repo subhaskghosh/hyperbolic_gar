@@ -1,11 +1,15 @@
 # Distributed Optimization with Faulty Nodes
 
-This repository implements a robust distributed stochastic gradient descent (SGD) framework designed for Internet-of-Things (IoT) applications. Our framework is particularly geared toward scenarios where a fraction of worker nodes may behave arbitrarily (Byzantine faults). To mitigate the impact of adversarial updates, we implement robust gradient aggregation methods, including a novel hyperbolic geometric median aggregator. The codebase includes experiments on both fully-connected models (using benchmark datasets such as MNIST, Fashion-MNIST, CIFAR-10, and Spambase) and a temporal graph neural network for traffic prediction based on the METR-LA dataset.
+This repository implements a robust distributed stochastic gradient descent (SGD) framework. Our framework is particularly geared toward scenarios where a fraction of worker nodes may behave arbitrarily (Byzantine faults). To mitigate the impact of adversarial updates, we implement robust gradient aggregation methods, including a novel hyperbolic geometric median aggregator. The codebase includes experiments on both fully-connected models (using benchmark datasets such as MNIST, Fashion-MNIST, CIFAR-10, and Spambase) and a temporal graph neural network for traffic prediction based on the METR-LA dataset.
 
 ## Overview
 
 In distributed learning, each worker node computes a local gradient on its mini-batch and sends it to a central aggregator. However, in adversarial settings some nodes may report corrupted gradients. Our approach employs robust aggregation rules to filter out these outliers. In particular, we compare:
 - **Average Aggregation** (with a baseline using honest nodes and a variant with adversarial Gaussian noise),
+- **Trimmed Mean**
+- **Centered Clipping**
+- **Coordinate-wise Median**
+- **Krum**
 - **Hyperbolic Geometric Median Aggregation** (which maps gradients into hyperbolic space using the Poincaré ball model, aggregates robustly, and maps back to Euclidean space).
 
 We evaluate these methods on standard datasets as well as on a traffic forecasting task using a Temporal Graph Neural Network (based on the A3T-GCN cell).
